@@ -96,8 +96,21 @@ function quiet() {
 }
 
 function yesno() {
+    # First check if the first argument provides an override of this question
+    if [ "$1" == "yes" ]; then
+        echo "${*:2} (yes/no) ? yes (set by environment variable)"
+        return 0
+    elif [ "$1" == "no" ]; then
+        echo "${*:2} (yes/no) ? no (set by environment variable)"
+        return 1
+    elif [ "$1" != "unset" ]; then
+        echo "${*:2} (yes/no) ? invalid answer, please use only 'yes' or 'no' (set by environment variable)"
+        exit 1
+    fi
+
+    # Not set by environment variable 
     while true; do
-    	read -p "$* (yes/no) ? " RSP
+    	read -p "${*:2} (yes/no) ? " RSP
 	[ "$RSP" = yes ] && return 0
 	[ "$RSP" = no ] && return 1
     done
@@ -122,7 +135,7 @@ security hole, but running QEMU as root is worse.  See
 http://wiki.qemu.org/Features-Done/HelperNetworking#Detailed_Summary
 
 EOMSG
-    	yesno "Change $QBH to setuid root"
+    	yesno "${FAME_CONFIRM_QEMUBH_SUID:-unset}" "Change $QBH to setuid root"
 	[ $? -eq 1 ] && echo "No configuration for you." && exit 0
 	$SUDO chown root:root $QBH
 	$SUDO chmod 4755 $QBH
@@ -516,7 +529,7 @@ function manifest_template_image() {
     RET=$?
     [ $RET -eq 255 ] && quiet $SUDO rm -f $TEMPLATEIMG && RET=0
     if [ $RET -eq 0 ]; then
-    	yesno "Re-use existing $TEMPLATEIMG"
+    	yesno "${FAME_CONFIRM_REUSE_TEMPLATEIMG:-unset}" "Re-use existing $TEMPLATEIMG"
 	[ $? -eq 0 ] && echo "Keep existing $TEMPLATEIMG" && return 0
     fi
     echo Creating new $TEMPLATEIMG from $FAME_MIRROR
@@ -635,7 +648,7 @@ function clone_VMs()
     	NEWHOST=$HOSTUSERBASE$N2
 	QCOW2="$FAME_OUTDIR/$NEWHOST.qcow2"
 	if [ -f $QCOW2 ]; then
-	    yesno "Re-use $QCOW2"
+	    yesno "${FAME_CONFIRM_REUSE_QCOW2:-unset}" "Re-use $QCOW2"
 	    [ $? -eq 0 ] && echo "Keep existing $QCOW2" && continue
 	fi
 	$SUDO rm -f $QCOW2
